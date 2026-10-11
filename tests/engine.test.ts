@@ -229,10 +229,16 @@ describe("computeTarget: climatology floors", () => {
     expect(t.reasons).not.toContain("near the cold tail for this time of year");
   });
 
-  it("frequent rain this time of year forces waterproof", () => {
-    const t = computeTarget(day({ feelsLikeC: 9, precipProb: 10 }), profile(), clim({ wetDayFreq: 0.3 }));
+  it("frequent rain this time of year forces waterproof when some rain is forecast", () => {
+    const t = computeTarget(day({ feelsLikeC: 9, precipProb: 30 }), profile(), clim({ wetDayFreq: 0.3 }));
     expect(t.needsWaterproof).toBe(true);
     expect(t.reasons).toContain("it rains on 30% of days this time of year");
+  });
+
+  it("wet climatology alone does not force rain gear on a dry forecast", () => {
+    const t = computeTarget(day({ feelsLikeC: 9, precipProb: 10 }), profile(), clim({ wetDayFreq: 0.3 }));
+    expect(t.needsWaterproof).toBe(false);
+    expect(t.umbrella).toBe(false);
   });
 
   it("wet climatology does not duplicate a forecast rain reason", () => {

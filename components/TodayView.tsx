@@ -223,10 +223,15 @@ export function TodayView({ chatEnabled, leaveTime, returnTime }: { chatEnabled:
     const j = r ? await r.json().catch(() => ({})) : {};
     setBusy(false);
     setLoading(false);
-    if (!r || !r.ok) {
-      setError(j.error ?? "Couldn't load today's plan.");
+    if (r?.status === 401) {
+      window.location.href = "/login";
       return;
     }
+    if (!r || !r.ok || !j.recommendation) {
+      setError(j.error ?? "Couldn't load today's plan. Check your connection and try again.");
+      return;
+    }
+    setError("");
     setPlan(j);
     setOccasion(j.occasion);
   }, []);
@@ -237,11 +242,16 @@ export function TodayView({ chatEnabled, leaveTime, returnTime }: { chatEnabled:
 
   async function markWash(id: string) {
     setBusy(true);
-    await fetch(`/api/wardrobe/${id}`, {
+    const r = await fetch(`/api/wardrobe/${id}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ status: "in_wash" }),
-    });
+    }).catch(() => null);
+    if (!r?.ok) {
+      setBusy(false);
+      setError("Couldn't update that item. Try again.");
+      return;
+    }
     await load(occasion, exclude);
   }
   async function swap(id: string) {
@@ -250,7 +260,6 @@ export function TodayView({ chatEnabled, leaveTime, returnTime }: { chatEnabled:
     await load(occasion, ex);
   }
   async function changeOccasion(o: Occasion) {
-    setOccasion(o);
     await load(o, exclude);
   }
   async function rate(rating: FeedbackRating) {
@@ -259,11 +268,13 @@ export function TodayView({ chatEnabled, leaveTime, returnTime }: { chatEnabled:
     const r = await fetch("/api/feedback", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ day: plan.date, rating, adjustedTempC: plan.recommendation.target.adjustedTempC, itemIds }),
-    });
-    if (r.ok) {
+      body: JSON.stringify({ planDate: plan.date, rating, adjustedTempC: plan.recommendation.target.adjustedTempC, itemIds }),
+    }).catch(() => null);
+    if (r?.ok) {
       const j = await r.json();
       setFeedback({ rating, offset: j.calibrationOffsetC });
+    } else {
+      setError("Couldn't save your rating. Try again.");
     }
   }
 
@@ -350,6 +361,12 @@ export function TodayView({ chatEnabled, leaveTime, returnTime }: { chatEnabled:
           </button>
         )}
       </section>
+
+      {error && (
+        <p role="alert" className="rounded-2xl bg-warn-soft px-5 py-3 text-sm text-warn">
+          {error}
+        </p>
+      )}
 
       {rec.warnings.length > 0 && (
         <section className="rounded-2xl bg-warn-soft px-5 py-3 text-sm text-warn">

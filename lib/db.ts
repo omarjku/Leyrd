@@ -19,6 +19,9 @@ export const isDemoDb = () => !process.env.DATABASE_URL;
 function create(): Sql {
   const url = process.env.DATABASE_URL;
   if (url) return postgres(url, { max: 10, idle_timeout: 30, onnotice: () => {} });
+  if (process.env.NODE_ENV === "production" && process.env.LEYRD_DEMO !== "1") {
+    throw new Error("DATABASE_URL is not set (set LEYRD_DEMO=1 to run on the embedded demo database)");
+  }
   console.warn("[db] DATABASE_URL not set: using embedded PGlite (demo mode, data is not persistent)");
   return createPglite();
 }

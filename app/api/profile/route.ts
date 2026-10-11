@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { addItems, countWardrobe, getProfile, upsertProfile } from "@/lib/repo";
+import { addItems, getProfile, upsertProfile } from "@/lib/repo";
 import { badRequest, requireUserId } from "@/lib/session";
 import { newItemSchema, profileSchema } from "@/lib/validation";
 
@@ -27,8 +27,6 @@ export async function PUT(req: Request) {
   if (!parsed.success) return badRequest("Invalid profile", parsed.error.issues);
   const { profile, items, completeOnboarding } = parsed.data;
   await upsertProfile(u.userId, profile, completeOnboarding ?? false);
-  if (items && items.length > 0 && (await countWardrobe(u.userId)) === 0) {
-    await addItems(u.userId, items);
-  }
+  if (items && items.length > 0) await addItems(u.userId, items, { onlyIfEmpty: true });
   return NextResponse.json({ profile: await getProfile(u.userId) });
 }

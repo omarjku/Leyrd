@@ -1,11 +1,11 @@
 import { redirect } from "next/navigation";
-import { auth, googleEnabled } from "@/auth";
+import { googleEnabled } from "@/auth";
+import { currentUserId } from "@/lib/session";
 import { SignupForm } from "@/components/AuthForms";
 import { LogoMark } from "@/components/LogoMark";
 
 export default async function Page() {
-  const session = await auth();
-  if (session?.user?.id) redirect("/today");
+  if (await currentUserId()) redirect("/today");
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-center gap-6 px-6 py-10">

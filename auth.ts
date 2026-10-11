@@ -5,7 +5,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { authConfig } from "./auth.config";
 import { db } from "@/lib/db";
-import { rateLimit } from "@/lib/rate-limit";
+import { clientIpFromHeaders, rateLimit } from "@/lib/rate-limit";
 
 export const googleEnabled = Boolean(process.env.AUTH_GOOGLE_ID && process.env.AUTH_GOOGLE_SECRET);
 
@@ -31,17 +31,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const parsed = credentialsSchema.safeParse(raw);
         if (!parsed.success) return null;
         const { email, password } = parsed.data;
-        const ip = request?.headers?.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-        if (!rateLimit(`login:${ip}`, 10, 60_000) || !rateLimit(`login:${email}`, 10, 60_000)) {
+        const ip = clientIpFromHeaders(request?.headers);
+        if (!rateLimit(`login:${ip}`, 10, 60_000) || !rateLimit(`login:${email}`, 30, 60_000)) {
           throw new TooManyAttempts();
         }
         const sql = db();
-        const rows = await sql<{ id: string; email: string; name: string | null; password_hash: string | null }[]>`
-          SELECT id, email, name, password_hash FROM users WHERE email = ${email}`;
+        const rows = await sql<
+          { id: string; email: string; name: string | null; password_hash: string | null; session_version: number }[]
+        >`SELECT id, email, name, password_hash, session_version FROM users WHERE email = ${email}`;
         const user = rows[0];
         const ok = await bcrypt.compare(password, user?.password_hash ?? getDummyHash());
         if (!user || !user.password_hash || !ok) return null;
-        return { id: user.id, email: user.email, name: user.name };
+        return { id: user.id, email: user.email, name: user.name, sessionVersion: user.session_version };
       },
     }),
     ...(googleEnabled ? [Google({ allowDangerousEmailAccountLinking: false })] : []),
@@ -60,6 +61,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         VALUES (${email}, ${profile.name ?? null}, ${(profile.picture as string | undefined) ?? null}, true)
         ON CONFLICT (email) DO UPDATE SET
           password_hash = CASE WHEN users.email_verified THEN users.password_hash ELSE NULL END,
+          -- Invalidate any session issued to whoever registered the unverified account.
+          session_version = users.session_version + CASE WHEN users.email_verified THEN 0 ELSE 1 END,
           email_verified = true,
           name = COALESCE(users.name, EXCLUDED.name),
           image = COALESCE(EXCLUDED.image, users.image)`;
@@ -67,10 +70,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     async jwt({ token, user, account }) {
       if (account?.provider === "google" && token.email) {
-        const rows = await db()<{ id: string }[]>`SELECT id FROM users WHERE email = ${token.email.toLowerCase()}`;
-        if (rows[0]) token.uid = rows[0].id;
+        const rows = await db()<{ id: string; session_version: number }[]>`
+          SELECT id, session_version FROM users WHERE email = ${token.email.toLowerCase()}`;
+        if (rows[0]) {
+          token.uid = rows[0].id;
+          token.sv = rows[0].session_version;
+        }
       } else if (user?.id) {
         token.uid = user.id;
+        token.sv = (user as { sessionVersion?: number }).sessionVersion ?? 0;
       }
       return token;
     },
@@ -79,6 +87,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
 declare module "next-auth" {
   interface Session {
-    user: { id: string; email?: string | null; name?: string | null; image?: string | null };
+    user: { id: string; sv: number; email?: string | null; name?: string | null; image?: string | null };
   }
 }

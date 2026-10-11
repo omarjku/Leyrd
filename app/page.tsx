@@ -1,11 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { auth } from "@/auth";
+import { currentUserId } from "@/lib/session";
 import { LogoMark } from "@/components/LogoMark";
 
 export default async function Home() {
-  const session = await auth();
-  if (session?.user?.id) redirect("/today");
+  if (await currentUserId()) redirect("/today");
   return (
     <main className="mx-auto flex min-h-dvh max-w-md flex-col justify-between px-6 py-10">
       <div className="flex items-center gap-2 text-lg font-bold">

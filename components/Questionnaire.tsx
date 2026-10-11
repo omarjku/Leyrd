@@ -165,9 +165,9 @@ export function Questionnaire({ initial, mode }: { initial: ProfileInput | null;
       method: "PUT",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ profile: p, items, completeOnboarding: mode === "onboarding" }),
-    });
+    }).catch(() => null);
     setBusy(false);
-    if (!r.ok) {
+    if (!r?.ok) {
       setError("Couldn't save. Check your answers and try again.");
       return;
     }
@@ -306,7 +306,7 @@ export function Questionnaire({ initial, mode }: { initial: ProfileInput | null;
             type="button"
             className="btn btn-primary flex-1"
             onClick={() => setStep((s) => s + 1)}
-            disabled={step === 1 && p.returnTime <= p.leaveTime}
+            disabled={step === 1 && (!p.leaveTime || !p.returnTime || p.returnTime <= p.leaveTime)}
           >
             Next
           </button>
@@ -316,7 +316,9 @@ export function Questionnaire({ initial, mode }: { initial: ProfileInput | null;
           </button>
         )}
       </div>
-      {step === 1 && p.returnTime <= p.leaveTime && <p className="text-sm text-warm">Home time should be after leave time.</p>}
+      {step === 1 && (!p.leaveTime || !p.returnTime || p.returnTime <= p.leaveTime) && (
+        <p className="text-sm text-warm">Set both times; home time should be after leave time.</p>
+      )}
     </div>
   );
 }
