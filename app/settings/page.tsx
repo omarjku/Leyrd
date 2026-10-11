@@ -1,3 +1,4 @@
+import { DemoBanner } from "@/components/DemoBanner";
 import { AppShell } from "@/components/BottomNav";
 import { AccountActions } from "@/components/AccountActions";
 import { Questionnaire } from "@/components/Questionnaire";
@@ -13,6 +14,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const { onboarded: _o, calibrationOffsetC, ...editable } = profile;
   return (
     <AppShell title="Profile">
+      <DemoBanner />
       <div className="space-y-6">
         <section className="card p-5">
           <p className="font-semibold">{session.user.name ?? "You"}</p>

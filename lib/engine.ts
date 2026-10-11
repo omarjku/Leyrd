@@ -123,7 +123,7 @@ export function computeTarget(
     if (worst.precipProb >= 50) rainReasons.push(`${Math.round(worst.precipProb)}% chance of rain`);
     else rainReasons.push(`${round1(worst.precipMm)} mm of rain expected`);
   }
-  if (clim && clim.wetDayFreq >= 0.25 && !needsWaterproof && !umbrella) {
+  if (clim && clim.wetDayFreq >= 0.25 && worst.precipProb >= 20 && !needsWaterproof && !umbrella) {
     if (slots.outer > 0) needsWaterproof = true;
     else umbrella = true;
     climReasons.push(`it rains on ${Math.round(clim.wetDayFreq * 100)}% of days this time of year`);

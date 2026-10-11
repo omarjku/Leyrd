@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
+import { rateLimit } from "@/lib/rate-limit";
 import { requireUserId } from "@/lib/session";
 
 // Proxies Open-Meteo geocoding so the client never calls third parties directly.
 export async function GET(req: Request) {
   const u = await requireUserId();
   if ("error" in u) return u.error;
+  if (!rateLimit(`geo:${u.userId}`, 30, 60_000)) return NextResponse.json({ results: [] }, { status: 429 });
   const q = new URL(req.url).searchParams.get("q")?.trim() ?? "";
   if (q.length < 2 || q.length > 80) return NextResponse.json({ results: [] });
   const url = `https://geocoding-api.open-meteo.com/v1/search?count=5&language=en&format=json&name=${encodeURIComponent(q)}`;

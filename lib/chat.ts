@@ -13,7 +13,34 @@ type BetaToolResultBlockParam = Anthropic.Beta.Messages.BetaToolResultBlockParam
 export const chatEnabled = () => Boolean(process.env.ANTHROPIC_API_KEY);
 
 const MODEL = "claude-opus-5-5";
-const MAX_TOOL_ROUNDS = 6;
+const MAX_TOOL_ROUNDS = 4;
+const MAX_WARDROBE_IN_TOOL = 100;
+/** Token budgets (input + output), reset daily. Override via env. */
+const USER_DAILY_TOKENS = Number(process.env.CHAT_USER_DAILY_TOKENS) || 200_000;
+const GLOBAL_DAILY_TOKENS = Number(process.env.CHAT_GLOBAL_DAILY_TOKENS) || 3_000_000;
+
+const usage = { day: "", global: 0, perUser: new Map<string, number>() };
+function today() {
+  return new Date().toISOString().slice(0, 10);
+}
+function rollDay() {
+  const d = today();
+  if (usage.day !== d) {
+    usage.day = d;
+    usage.global = 0;
+    usage.perUser.clear();
+  }
+}
+/** False when this user or the whole app has used up today's chat budget. */
+export function withinChatBudget(userId: string): boolean {
+  rollDay();
+  return usage.global < GLOBAL_DAILY_TOKENS && (usage.perUser.get(userId) ?? 0) < USER_DAILY_TOKENS;
+}
+function recordUsage(userId: string, tokens: number) {
+  rollDay();
+  usage.global += tokens;
+  usage.perUser.set(userId, (usage.perUser.get(userId) ?? 0) + tokens);
+}
 const STATUS_HOURS: Record<string, number> = { in_wash: 10, drying: 12, unavailable: 24 * 7 };
 
 const TOOLS: BetaTool[] = [
@@ -113,7 +140,11 @@ export interface ChatResult {
   wardrobeChanged: boolean;
 }
 
-export async function runChat(userId: string, history: ChatTurn[], context: { occasion?: Occasion }): Promise<ChatResult> {
+export async function runChat(
+  userId: string,
+  history: ChatTurn[],
+  context: { occasion?: Occasion; today: string; planningDate: string },
+): Promise<ChatResult> {
   const client = new Anthropic();
   let latestPlan: PlanResult | null = null;
   let wardrobeChanged = false;
@@ -129,7 +160,7 @@ export async function runChat(userId: string, history: ChatTurn[], context: { oc
       if (block.name === "list_wardrobe") {
         const items = await listWardrobe(userId);
         return result(
-          items.map((i) => ({
+          items.slice(0, MAX_WARDROBE_IN_TOOL).map((i) => ({
             id: i.id,
             name: i.name,
             slot: i.slot,
@@ -177,14 +208,25 @@ export async function runChat(userId: string, history: ChatTurn[], context: { oc
   for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
     const response = await client.beta.messages.create({
       model: MODEL,
-      max_tokens: 4000,
-      system: SYSTEM,
+      max_tokens: 2000,
+      system: `${SYSTEM}\n\nToday is ${context.today} (the user's local date). The default planning day is ${context.planningDate}. For "tomorrow", pass the day after today as date. Only dates from yesterday to 14 days ahead work.`,
       tools: TOOLS,
       messages,
       output_config: { effort: "low" },
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default",
     });
+
+    recordUsage(
+      userId,
+      (response.usage.input_tokens ?? 0) +
+        (response.usage.cache_read_input_tokens ?? 0) +
+        (response.usage.cache_creation_input_tokens ?? 0) +
+        (response.usage.output_tokens ?? 0),
+    );
+    if (!withinChatBudget(userId) && response.stop_reason === "tool_use") {
+      return { reply: "I've hit today's chat limit. The buttons on each item still re-plan your outfit.", plan: latestPlan, wardrobeChanged };
+    }
 
     if (response.stop_reason === "refusal") {
       return { reply: "Sorry, I can't help with that one.", plan: latestPlan, wardrobeChanged };
@@ -201,7 +243,9 @@ export async function runChat(userId: string, history: ChatTurn[], context: { oc
     }
 
     messages.push({ role: "assistant", content: response.content });
-    const results = await Promise.all(toolUses.map(execute));
+    // Sequential on purpose: a status change must land before a re-plan in the same turn.
+    const results: BetaToolResultBlockParam[] = [];
+    for (const t of toolUses) results.push(await execute(t));
     messages.push({ role: "user", content: results });
   }
   return { reply: "Done.", plan: latestPlan, wardrobeChanged };

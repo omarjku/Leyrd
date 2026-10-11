@@ -1,11 +1,11 @@
 import { redirect } from "next/navigation";
-import { auth, googleEnabled } from "@/auth";
+import { googleEnabled } from "@/auth";
+import { currentUserId } from "@/lib/session";
 import { LoginForm } from "@/components/AuthForms";
 import { LogoMark } from "@/components/LogoMark";
 
 export default async function Page({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
-  const session = await auth();
-  if (session?.user?.id) redirect("/today");
+  if (await currentUserId()) redirect("/today");
   const { error } = await searchParams;
   const message = error ? (error === "AccessDenied" ? "Google sign-in was denied or the email is not verified." : "Sign-in failed. Try again.") : undefined;
   return (

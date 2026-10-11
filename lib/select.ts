@@ -106,7 +106,7 @@ export function selectOutfit(
     const pool = pools[slot].items;
     let pick: WardrobeItem | null = null;
     if (slot === "outer" && target.needsWaterproof) {
-      const adequate = pool.filter((i) => i.waterproof && i.warmth >= t - 0.5);
+      const adequate = pool.filter((i) => i.waterproof && i.warmth >= t - 0.5 && i.warmth <= t + 1);
       pick = best(adequate, t, occasion);
     }
     chosen[slot] = pick ?? best(pool, t, occasion);

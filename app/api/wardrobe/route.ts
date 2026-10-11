@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { addItems, countWardrobe, listWardrobe } from "@/lib/repo";
+import { addItems, listWardrobe } from "@/lib/repo";
 import { badRequest, requireUserId } from "@/lib/session";
 import { newItemSchema } from "@/lib/validation";
 
@@ -17,9 +17,8 @@ export async function POST(req: Request) {
     await req.json().catch(() => null),
   );
   if (!parsed.success) return badRequest("Invalid items", parsed.error.issues);
-  if ((await countWardrobe(u.userId)) + parsed.data.items.length > 300) {
+  if (!(await addItems(u.userId, parsed.data.items))) {
     return badRequest("Wardrobe limit reached (300 items)");
   }
-  await addItems(u.userId, parsed.data.items);
   return NextResponse.json({ items: await listWardrobe(u.userId) }, { status: 201 });
 }

@@ -1,3 +1,4 @@
+import { DemoBanner } from "@/components/DemoBanner";
 import { TodayView } from "@/components/TodayView";
 import { AppShell } from "@/components/BottomNav";
 import { chatEnabled } from "@/lib/chat";
@@ -9,6 +10,7 @@ export default async function TodayPage() {
   const { profile } = await requireOnboardedPage();
   return (
     <AppShell title="Today">
+      <DemoBanner />
       <TodayView chatEnabled={chatEnabled()} leaveTime={profile.leaveTime} returnTime={profile.returnTime} />
     </AppShell>
   );

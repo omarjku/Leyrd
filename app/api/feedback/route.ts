@@ -1,18 +1,22 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { applyFeedback } from "@/lib/calibration";
+import { addDays, localDate, localTime } from "@/lib/dates";
 import { getFeedbackForDay, getProfile, markWorn, recordFeedback, setCalibration } from "@/lib/repo";
 import { badRequest, requireUserId } from "@/lib/session";
 import { uuidSchema } from "@/lib/validation";
 
 const schema = z
   .object({
-    day: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    /** Date of the plan the user was looking at; outfit details only count if it is the day being rated. */
+    planDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
     rating: z.enum(["cold", "right", "warm"]),
     adjustedTempC: z.number().min(-60).max(60).nullable().optional(),
     itemIds: z.array(uuidSchema).max(20).optional(),
   })
   .strict();
+
+const clamp = (n: number) => Math.round(Math.max(-4, Math.min(4, n)) * 10) / 10 || 0;
 
 export async function POST(req: Request) {
   const u = await requireUserId();
@@ -21,13 +25,23 @@ export async function POST(req: Request) {
   if (!parsed.success) return badRequest("Invalid feedback", parsed.error.issues);
   const profile = await getProfile(u.userId);
   if (!profile) return NextResponse.json({ error: "Finish onboarding first" }, { status: 409 });
-  const { day, rating, adjustedTempC, itemIds } = parsed.data;
-  // Re-rating the same day replaces the earlier rating instead of stacking.
+  const { planDate, rating, adjustedTempC, itemIds } = parsed.data;
+
+  // The day being rated is the one the user has already been out in:
+  // today once they've left the house, otherwise yesterday.
+  const today = localDate(profile.timezone);
+  const day = localTime(profile.timezone) >= profile.leaveTime ? today : addDays(today, -1);
+  const sameDay = planDate === day;
+
+  const current = profile.calibrationOffsetC;
   const previous = await getFeedbackForDay(u.userId, day);
-  const base = previous ? previous.offset_before : profile.calibrationOffsetC;
+  // Re-rating a day replaces that day's own adjustment without discarding later ones.
+  const base = previous ? clamp(current - (previous.offset_after - previous.offset_before)) : current;
   const next = applyFeedback(base, rating, profile.outdoorMinutes);
-  await recordFeedback(u.userId, day, rating, base, next, adjustedTempC ?? null, { itemIds: itemIds ?? [] });
+  await recordFeedback(u.userId, day, rating, base, next, sameDay ? (adjustedTempC ?? null) : null, {
+    itemIds: sameDay ? (itemIds ?? []) : [],
+  });
   await setCalibration(u.userId, next);
-  if (itemIds?.length) await markWorn(u.userId, itemIds);
-  return NextResponse.json({ calibrationOffsetC: next });
+  if (sameDay && itemIds?.length) await markWorn(u.userId, itemIds);
+  return NextResponse.json({ calibrationOffsetC: next, day });
 }

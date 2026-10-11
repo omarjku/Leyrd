@@ -238,3 +238,23 @@ describe("selectOutfit: rain and accessories", () => {
     expect(pickFor(r, "outer")?.note).toBe(CARRY_OUTER_NOTE);
   });
 });
+
+describe("selectOutfit: waterproof outer is not overkill", () => {
+  it("does not pick a winter parka for a mild rainy day when a lighter shell exists", () => {
+    const wardrobe = [
+      item("long_sleeve"),
+      item("sweater"),
+      item("light_jacket"),
+      item("rain_shell"),
+      item("winter_coat"),
+    ];
+    const r = selectOutfit(target("mild", { needsWaterproof: true }), wardrobe, "uni", { now: NOW });
+    expect(pickFor(r, "outer")?.item?.kind).toBe("rain_shell");
+  });
+
+  it("falls back to a normal-weight jacket plus umbrella warning when only a heavy waterproof exists", () => {
+    const wardrobe = [item("long_sleeve"), item("sweater"), item("light_jacket"), item("winter_coat")];
+    const r = selectOutfit(target("mild", { needsWaterproof: true }), wardrobe, "uni", { now: NOW });
+    expect(pickFor(r, "outer")?.item?.kind).toBe("light_jacket");
+  });
+});

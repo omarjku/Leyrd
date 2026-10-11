@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { buildPlan } from "@/lib/recommend-service";
+import { buildPlan, DateOutOfRangeError } from "@/lib/recommend-service";
+import { rateLimit } from "@/lib/rate-limit";
 import { badRequest, requireUserId } from "@/lib/session";
 import { occasionSchema, uuidSchema } from "@/lib/validation";
 
@@ -15,6 +16,9 @@ const schema = z
 export async function POST(req: Request) {
   const u = await requireUserId();
   if ("error" in u) return u.error;
+  if (!rateLimit(`rec:${u.userId}`, 30, 60_000)) {
+    return NextResponse.json({ error: "Slow down a little and try again in a minute." }, { status: 429 });
+  }
   const parsed = schema.safeParse((await req.json().catch(() => ({}))) ?? {});
   if (!parsed.success) return badRequest("Invalid request", parsed.error.issues);
   try {
@@ -23,6 +27,7 @@ export async function POST(req: Request) {
     const { profile, wardrobe, ...rest } = plan;
     return NextResponse.json({ ...rest, calibrationOffsetC: profile.calibrationOffsetC, city: profile.city });
   } catch (err) {
+    if (err instanceof DateOutOfRangeError) return badRequest(err.message);
     console.error("[recommend]", err);
     return NextResponse.json({ error: "Weather service unavailable, try again in a minute." }, { status: 502 });
   }

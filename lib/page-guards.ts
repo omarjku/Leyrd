@@ -2,10 +2,12 @@ import "server-only";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { getProfile } from "./repo";
+import { currentUserId } from "./session";
 
 export async function requireSessionPage() {
   const session = await auth();
-  if (!session?.user?.id) redirect("/login");
+  const userId = await currentUserId();
+  if (!session?.user || !userId) redirect("/login");
   return session;
 }
 

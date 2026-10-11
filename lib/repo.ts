@@ -114,17 +114,25 @@ export async function listWardrobe(userId: string): Promise<WardrobeItem[]> {
 
 export type NewItem = Omit<WardrobeItem, "id" | "status" | "statusUntil" | "lastWorn">;
 
-export async function addItems(userId: string, items: NewItem[]) {
-  if (items.length === 0) return;
+export const WARDROBE_LIMIT = 300;
+
+/** Adds items atomically; returns false if the wardrobe limit would be exceeded. */
+export async function addItems(userId: string, items: NewItem[], opts: { onlyIfEmpty?: boolean } = {}): Promise<boolean> {
+  if (items.length === 0) return true;
   const sql = db();
-  await sql.begin(async (tx) => {
+  return sql.begin(async (tx) => {
+    await tx`SELECT pg_advisory_xact_lock(hashtext(${userId}))`;
+    const [{ n }] = await tx<{ n: number }[]>`SELECT count(*)::int AS n FROM wardrobe_items WHERE user_id = ${userId}`;
+    if (opts.onlyIfEmpty && n > 0) return true;
+    if (n + items.length > WARDROBE_LIMIT) return false;
     for (const i of items) {
       await tx`
         INSERT INTO wardrobe_items (user_id, name, slot, kind, warmth, waterproof, windproof, occasions)
         VALUES (${userId}, ${i.name}, ${i.slot}, ${i.kind}, ${i.warmth}, ${i.waterproof}, ${i.windproof},
                 ${i.occasions as string[]})`;
     }
-  });
+    return true;
+  }) as Promise<boolean>;
 }
 
 export async function countWardrobe(userId: string): Promise<number> {
@@ -188,8 +196,8 @@ export async function recordFeedback(
 }
 
 export async function getFeedbackForDay(userId: string, day: string) {
-  const rows = await db()<{ rating: string; offset_before: number }[]>`
-    SELECT rating, offset_before FROM feedback WHERE user_id = ${userId} AND day = ${day}`;
+  const rows = await db()<{ rating: string; offset_before: number; offset_after: number }[]>`
+    SELECT rating, offset_before, offset_after FROM feedback WHERE user_id = ${userId} AND day = ${day}`;
   return rows[0] ?? null;
 }
 
