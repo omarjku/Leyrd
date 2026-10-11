@@ -1,0 +1,107 @@
+@import "tailwindcss";
+
+
+:root {
+  --bg: #f6f5f1;
+  --card: #ffffff;
+  --ink: #1b1d1f;
+  --muted: #6b7075;
+  --line: #e4e2dc;
+  --accent: #2f5d50;
+  --accent-ink: #ffffff;
+  --accent-soft: #e3eeea;
+  --warn: #9a5b00;
+  --warn-soft: #fbf0dc;
+  --cold: #2a62a8;
+  --warm: #b4482b;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111314;
+    --card: #1a1d1f;
+    --ink: #eceeef;
+    --muted: #9aa1a6;
+    --line: #2b3033;
+    --accent: #7cc4ad;
+    --accent-ink: #0d1f1a;
+    --accent-soft: #1d2f2a;
+    --warn: #f0b860;
+    --warn-soft: #2e2516;
+    --cold: #7fb1f0;
+    --warm: #f08a6c;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-card: var(--card);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-cold: var(--cold);
+  --color-warm: var(--warm);
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 1rem;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+  font-weight: 600;
+  min-height: 44px;
+  transition: opacity 0.15s;
+}
+.btn:disabled {
+  opacity: 0.5;
+}
+.btn-primary {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--ink);
+}
+.input {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+  border-radius: 0.75rem;
+  padding: 0.7rem 0.9rem;
+  min-height: 44px;
+  font-size: 16px; /* prevents iOS zoom */
+}
+.chip {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.875rem;
+  min-height: 36px;
+}
+.chip[aria-pressed="true"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
