@@ -82,26 +82,28 @@ function PickRow({
 }) {
   const it = pick.item;
   return (
-    <li className="flex items-center gap-3 py-3">
-      <span className="w-12 shrink-0 text-xs font-semibold uppercase tracking-wide text-muted">{SLOT_LABEL[pick.slot]}</span>
+    <li className="flex items-start gap-3 py-3">
+      <span className="w-12 shrink-0 pt-0.5 text-xs font-semibold uppercase tracking-wide text-muted">{SLOT_LABEL[pick.slot]}</span>
       <div className="min-w-0 flex-1">
         {it ? (
-          <p className="truncate font-semibold">{it.name}</p>
+          <p className="font-semibold">{it.name}</p>
         ) : (
-          <p className="truncate font-semibold text-muted italic">{pick.generic} <span className="text-xs not-italic">(not in your wardrobe)</span></p>
+          <p className="font-semibold text-muted italic">
+            {pick.generic} <span className="text-xs not-italic">(not in your wardrobe)</span>
+          </p>
         )}
         {pick.note && <p className="text-xs text-muted">{pick.note}</p>}
+        {it && (
+          <div className="mt-1.5 flex gap-2">
+            <button type="button" disabled={busy} className="chip !min-h-8 !px-3 !py-1 text-xs" onClick={() => onWash(it.id)} aria-label={`${it.name} is in the wash`}>
+              In the wash
+            </button>
+            <button type="button" disabled={busy} className="chip !min-h-8 !px-3 !py-1 text-xs" onClick={() => onSwap(it.id)} aria-label={`Swap ${it.name}`}>
+              Something else
+            </button>
+          </div>
+        )}
       </div>
-      {it && (
-        <div className="flex shrink-0 gap-1">
-          <button type="button" disabled={busy} className="chip !min-h-8 !px-2.5 !py-1 text-xs" onClick={() => onWash(it.id)} aria-label={`${it.name} is in the wash`}>
-            In wash
-          </button>
-          <button type="button" disabled={busy} className="chip !min-h-8 !px-2.5 !py-1 text-xs" onClick={() => onSwap(it.id)} aria-label={`Swap ${it.name}`}>
-            Swap
-          </button>
-        </div>
-      )}
     </li>
   );
 }
