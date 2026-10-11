@@ -8,7 +8,7 @@ Right now there is no database URL, so the app runs on an embedded database that
 1. Render dashboard → **leyrd-db** (Postgres, Frankfurt) → **Connect** → copy the **Internal Database URL**.
 2. `leyrd` service → Environment → add `DATABASE_URL` = that URL → Save.
 
-Tables are created on startup. ⚠️ Render's free Postgres **expires on 10 Nov 2026** (30 days). Before then, upgrade it to a paid plan in Render, or move to another Postgres host and change `DATABASE_URL`.
+Tables are created on startup. After that you can delete `LEYRD_DEMO` (it only allows the embedded fallback). ⚠️ Render's free Postgres **expires on 10 Nov 2026** (30 days). Before then, upgrade it to a paid plan in Render, or move to another Postgres host and change `DATABASE_URL`.
 
 ## 2. Google sign-in (optional, 5 min)
 1. https://console.cloud.google.com → create or select a project → **APIs & Services → OAuth consent screen**. Choose External, enter the app name "Leyrd" and your email, and add yourself (and testers) under **Test users**.
@@ -25,7 +25,9 @@ Create a key at https://console.anthropic.com → API keys, then add `ANTHROPIC_
 The chat uses `claude-opus-5-5` at low effort, rate-limited to 20 messages/min and 300/day per user. Without the key, the "In the wash" and "Something else" buttons do the same re-planning without AI.
 
 ## Already set
-`AUTH_SECRET` (random), `AUTH_TRUST_HOST=true`, `NODE_VERSION=22`.
+`AUTH_SECRET` (random), `AUTH_URL=https://leyrd.onrender.com`, `AUTH_TRUST_HOST=true`, `NODE_VERSION=22`, `LEYRD_DEMO=1` (allows the embedded demo DB until `DATABASE_URL` is set).
+
+Optional tuning: `CHAT_USER_DAILY_TOKENS` (default 200k) and `CHAT_GLOBAL_DAILY_TOKENS` (default 3M) cap AI chat spend.
 
 ## Install on your phone
 - **iPhone:** open the URL in Safari → Share → **Add to Home Screen**.
