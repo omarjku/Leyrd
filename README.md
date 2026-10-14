@@ -1,4 +1,18 @@
+<div align="center">
+
 # Leyrd
+
+**How many layers should you wear today?**
+
+[![Live app](https://img.shields.io/badge/live-leyrd.onrender.com-7cc4ad?style=flat-square)](https://leyrd.onrender.com)
+![Next.js 15](https://img.shields.io/badge/Next.js-15-111314?style=flat-square&logo=nextdotjs&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=flat-square&logo=typescript&logoColor=white)
+![Tests: 80](https://img.shields.io/badge/tests-80-2f5d50?style=flat-square)
+![PWA](https://img.shields.io/badge/installable-PWA-a9d3c5?style=flat-square)
+
+<img src="docs/assets/leyrd.gif" alt="Leyrd works out the day: feels-like 6.0 °C at the 08:00 commute, minus 2 for wind, minus 2 for biking, minus 0.5 from your feedback, so 1.5 °C. That is the cold band: three layers (long tee, hoodie, rain jacket) plus scarf, gloves and a waterproof because rain is likely." width="100%">
+
+</div>
 
 Layer coach: tells you how many layers to wear today and which of your own clothes to put on. It uses the forecast for your commute, 10 years of local climate history, what's clean in your wardrobe, and your "too cold / too warm" feedback.
 
@@ -40,3 +54,5 @@ npm test                     # 80 unit tests (engine, selection, weather parsing
 5. **Outfit.** `lib/select.ts` picks your available items closest to each target, prefers the occasion, and carries any deficit over to the next layer.
 
 Branches: work happens on `omar`; tested milestones are merged into `main`, which auto-deploys.
+
+<sub>The animation at the top is drawn frame by frame in code (canvas → headless Chromium → ffmpeg). Source: [omarjku/omarjku/motion](https://github.com/omarjku/omarjku/tree/main/motion).</sub>
